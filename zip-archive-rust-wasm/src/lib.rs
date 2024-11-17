@@ -7,6 +7,7 @@ use zip::write::FileOptions;
 #[derive(Default, Deserialize)]
 struct Data {
     name: String,
+    #[serde(with="serde_bytes")]
     value: Vec<u8>,
 }
 
@@ -19,13 +20,11 @@ pub fn archive(val: JsValue) {
     let mut zip = zip::ZipWriter::new(&mut cursor);
     let options = FileOptions::default()
         .compression_method(zip::CompressionMethod::Deflated)
-        .compression_level(Some(9))
-        .unix_permissions(0o755);
-    zip.add_directory("zip_result/", options).unwrap();
+        .compression_level(Some(9));
  
     for v in data {
         zip.start_file(format!("zip_result/{}", v.name), options).unwrap();
-        zip.write(&(v.value)[..]).unwrap();
+        zip.write_all(&(v.value)[..]).unwrap();
     }
     zip.finish().unwrap();
     }
@@ -38,8 +37,9 @@ fn download(result_bytes: Vec<u8>, mime_type: &str, file_name: &str) {
     u8_array.copy_from(&result_bytes[..]);
     let blob_parts = js_sys::Array::new();
     blob_parts.push(&u8_array.buffer());
-    let mut blob_property_bag = web_sys::BlobPropertyBag::new();
-    let blob = web_sys::Blob::new_with_u8_array_sequence_and_options(&blob_parts, blob_property_bag.type_(mime_type)).unwrap();
+    let blob_property_bag = web_sys::BlobPropertyBag::new();
+    blob_property_bag.set_type(mime_type);
+    let blob = web_sys::Blob::new_with_u8_array_sequence_and_options(&blob_parts, &blob_property_bag).unwrap();
     let downlad_url = web_sys::Url::create_object_url_with_blob(&blob).unwrap();
 
     let window = web_sys::window().unwrap();
@@ -49,8 +49,6 @@ fn download(result_bytes: Vec<u8>, mime_type: &str, file_name: &str) {
     let _ = a_elem.set_attribute("download", file_name);
 
     let mouse_event = web_sys::MouseEvent::new("click").unwrap();
-    mouse_event.init_mouse_event_with_can_bubble_arg_and_cancelable_arg_and_view_arg(
-        "click", true, true, Some(&window));
     let _ = a_elem.dispatch_event(&web_sys::Event::from(mouse_event));
     output_timestamp_log();
 }
