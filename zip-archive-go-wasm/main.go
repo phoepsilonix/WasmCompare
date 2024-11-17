@@ -45,7 +45,7 @@ func archive(_ js.Value, args []js.Value) any {
 		return false
 	}
 
-	return download(buf.Bytes(), "text/plain", "archive.zip")
+	return download(buf.Bytes(), "application/zip", "archive.zip")
 }
 
 func download(resultBytes []byte, mimeType string, fileName string) bool {
